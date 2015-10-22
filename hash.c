@@ -113,7 +113,6 @@ int ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
                     && memcmp( key, currentItem->key, keyLength ) > 0 ) ) ) {
         previousItem = currentItem;
         currentItem = currentItem->next;
-        /* printf("get position\n"); */
     }
 
     /* There's already a such a key.  Let's replace that string. */
@@ -123,14 +122,12 @@ int ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
             && memcmp( key, currentItem->key, keyLength ) == 0 ) {
         free( currentItem->value );
         currentItem->value = memcpy( malloc( size ), value, size );
-        /* printf( "overwrite %d\n", list ); */
 
     /* Nope, could't find it.  Time to grow a pair. */
     } else {
         thisItem = ht_newItem( key, keyLength, value, size );
         thisItem->next = primaryItem;
         hashtable->entry[ list ] = thisItem;
-        /* printf( "add item %s / %d\n", thisItem->key, list ); */
     }
     return 0;
 }
@@ -142,22 +139,14 @@ void *ht_get( hashtable_t *hashtable, char *key ) {
     entry_t *entryItem;
 
     list = ht_hash( hashtable, key, keyLength );
-    /* printf( "search %s / %d\n", key, list ); */
 
     /* Step through the list, looking for our value. */
     entryItem = hashtable->entry[ list ];
-    /* printf( "start in bucket %s\n", entryItem->key ); */
-    /* if ( entryItem != NULL ) printf( "entryItem is not NULL\n" ); */
-    /* if ( entryItem->key != NULL ) printf( "eintryItem->key is not NULL\n" ); */
-    /* if ( keyLength > entryItem->keyLength ) printf( "keyLength (%lu) > entryItem->keyLength (%lu)\n", keyLength, entryItem->keyLength ); */
-    /* if ( keyLength == entryItem->keyLength ) printf( "keyLengths are equal\n" ); */
-    /* if ( memcmp( key, entryItem->key, keyLength ) != 0 ) printf( "key > entryItem->key\n" ); */
     while( entryItem != NULL
             && entryItem->key != NULL
             && ( keyLength > entryItem->keyLength
                 || ( keyLength == entryItem->keyLength
                     && memcmp( key, entryItem->key, keyLength ) != 0 ) ) ) {
-        /* printf( "not %s, go to next\n", entryItem->key ); */
         entryItem = entryItem->next;
     }
 
@@ -197,6 +186,7 @@ int main( int argc, char **argv ) {
     printf( "key5: " );
     res = ht_get( hashtable, "key5" );
     if ( res != NULL ) printf( "%s\n", res );
+    printf( "\n" );
 
     return 0;
 }
