@@ -1,30 +1,11 @@
 /**
- * @author Simon Maurer
+ * @author Simon Maurer (forked)
  * @author Tony Thompson https://gist.github.com/tonious/1377667
  * */
 
-#define _XOPEN_SOURCE 500 /* Enable certain library functions (strdup) on linux.  See feature_test_macros(7) */
-
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-struct entry_s {
-    char *key;
-    size_t keyLength;
-    void *value;
-    struct entry_s *next;
-};
-
-typedef struct entry_s entry_t;
-
-struct hashtable_s {
-    int size;
-    struct entry_s **entry;
-};
-
-typedef struct hashtable_s hashtable_t;
-
+#include "hash.h"
 
 /* Create a new hashtable. */
 hashtable_t *ht_create( int size ) {
@@ -92,7 +73,7 @@ entry_t *ht_newItem( char *key, size_t keyLength, void *value, size_t size ) {
 }
 
 /* Insert a key-value pair into a hash table. */
-int ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
+void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
     int list = 0;
     size_t keyLength = strlen( key );
     entry_t *thisItem = NULL;
@@ -129,7 +110,6 @@ int ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
         thisItem->next = primaryItem;
         hashtable->entry[ list ] = thisItem;
     }
-    return 0;
 }
 
 /* Retrieve a key-value pair from a hash table. */
@@ -159,34 +139,4 @@ void *ht_get( hashtable_t *hashtable, char *key ) {
     } else {
         return NULL;
     }
-}
-
-
-int main( int argc, char **argv ) {
-    char* res;
-    hashtable_t *hashtable = ht_create( 65536 );
-
-    ht_put( hashtable, "key1", "inky", 0 );
-    ht_put( hashtable, "key2", "pinky", 0 );
-    ht_put( hashtable, "key3", "blinky", 0 );
-    ht_put( hashtable, "key4", "floyd", 0 );
-
-    printf( "key1: " );
-    res = ht_get( hashtable, "key1" );
-    if ( res != NULL ) printf( "%s\n", res );
-    printf( "key2: " );
-    res = ht_get( hashtable, "key2" );
-    if ( res != NULL ) printf( "%s\n", res );
-    printf( "key3: " );
-    res = ht_get( hashtable, "key3" );
-    if ( res != NULL ) printf( "%s\n", res );
-    printf( "key4: " );
-    res = ht_get( hashtable, "key4" );
-    if ( res != NULL ) printf( "%s\n", res );
-    printf( "key5: " );
-    res = ht_get( hashtable, "key5" );
-    if ( res != NULL ) printf( "%s\n", res );
-    printf( "\n" );
-
-    return 0;
 }

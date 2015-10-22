@@ -1,0 +1,31 @@
+/**
+ * @author Simon Maurer (forked)
+ * @author Tony Thompson https://gist.github.com/tonious/1377667
+ * */
+
+#ifndef HASH_H
+#define HASH_H
+
+#include <stdlib.h>
+
+struct entry_s {
+    char *key;
+    size_t keyLength;
+    void *value;
+    struct entry_s *next;
+};
+
+typedef struct entry_s entry_t;
+
+struct hashtable_s {
+    int size;
+    struct entry_s **entry;
+};
+
+typedef struct hashtable_s hashtable_t;
+
+hashtable_t *ht_create( int size );
+void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size );
+void *ht_get( hashtable_t *hashtable, char *key );
+
+#endif // HASH_H
