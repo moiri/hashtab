@@ -89,9 +89,9 @@ void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
 
     while( currentItem != NULL
             && currentItem->key != NULL
-            && ( keyLength > currentItem->keyLength
+            && ( keyLength != currentItem->keyLength
                 || ( keyLength == currentItem->keyLength
-                    && memcmp( key, currentItem->key, keyLength ) > 0 ) ) ) {
+                    && memcmp( key, currentItem->key, keyLength ) != 0 ) ) ) {
         previousItem = currentItem;
         currentItem = currentItem->next;
     }
@@ -124,7 +124,7 @@ void *ht_get( hashtable_t *hashtable, char *key ) {
     entryItem = hashtable->entry[ list ];
     while( entryItem != NULL
             && entryItem->key != NULL
-            && ( keyLength > entryItem->keyLength
+            && ( keyLength != entryItem->keyLength
                 || ( keyLength == entryItem->keyLength
                     && memcmp( key, entryItem->key, keyLength ) != 0 ) ) ) {
         entryItem = entryItem->next;
