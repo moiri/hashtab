@@ -1,21 +1,26 @@
+/**
+ * @author Simon Maurer
+ * @author Tony Thompson https://gist.github.com/tonious/1377667
+ * */
+
 #define _XOPEN_SOURCE 500 /* Enable certain library functions (strdup) on linux.  See feature_test_macros(7) */
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <limits.h>
 #include <string.h>
 
 struct entry_s {
-	char *key;
-	char *value;
-	struct entry_s *next;
+    char *key;
+    size_t keyLength;
+    void *value;
+    struct entry_s *next;
 };
 
 typedef struct entry_s entry_t;
 
 struct hashtable_s {
-	int size;
-	struct entry_s **table;	
+    int size;
+    struct entry_s **entry;
 };
 
 typedef struct hashtable_s hashtable_t;
@@ -24,146 +29,174 @@ typedef struct hashtable_s hashtable_t;
 /* Create a new hashtable. */
 hashtable_t *ht_create( int size ) {
 
-	hashtable_t *hashtable = NULL;
-	int i;
+    hashtable_t *hashtable = NULL;
+    int i;
 
-	if( size < 1 ) return NULL;
+    if( size < 1 ) return NULL;
 
-	/* Allocate the table itself. */
-	if( ( hashtable = malloc( sizeof( hashtable_t ) ) ) == NULL ) {
-		return NULL;
-	}
+    /* Allocate the table itself. */
+    if( ( hashtable = malloc( sizeof( hashtable_t ) ) ) == NULL ) {
+        return NULL;
+    }
 
-	/* Allocate pointers to the head nodes. */
-	if( ( hashtable->table = malloc( sizeof( entry_t * ) * size ) ) == NULL ) {
-		return NULL;
-	}
-	for( i = 0; i < size; i++ ) {
-		hashtable->table[i] = NULL;
-	}
+    /* Allocate pointers to the head nodes. */
+    if( ( hashtable->entry = malloc( sizeof( entry_t * ) * size ) ) == NULL ) {
+        return NULL;
+    }
+    for( i = 0; i < size; i++ ) {
+        hashtable->entry[i] = NULL;
+    }
 
-	hashtable->size = size;
+    hashtable->size = size;
 
-	return hashtable;	
+    return hashtable;
 }
 
 /* Hash a string for a particular hash table. */
-int ht_hash( hashtable_t *hashtable, char *key ) {
+int ht_hash( hashtable_t *hashtable, char *key, size_t keyLength ) {
+    size_t hash, i;
 
-	unsigned long int hashval;
-	int i = 0;
+    // http://en.wikipedia.org/wiki/Jenkins_hash_function
+    for ( hash = i = 0; i < keyLength; ++i ) {
+        hash += key[i];
+        hash += ( hash << 10 );
+        hash ^= ( hash >> 6 );
+    }
+    hash += ( hash << 3 );
+    hash ^= ( hash >> 11 );
+    hash += ( hash << 15 );
 
-	/* Convert our string to an integer */
-	while( hashval < ULONG_MAX && i < strlen( key ) ) {
-		hashval = hashval << 8;
-		hashval += key[ i ];
-		i++;
-	}
-
-	return hashval % hashtable->size;
+    return hash % hashtable->size;
 }
 
 /* Create a key-value pair. */
-entry_t *ht_newpair( char *key, char *value ) {
-	entry_t *newpair;
+entry_t *ht_newItem( char *key, size_t keyLength, void *value, size_t size ) {
+    entry_t *thisItem;
 
-	if( ( newpair = malloc( sizeof( entry_t ) ) ) == NULL ) {
-		return NULL;
-	}
+    if( ( thisItem = malloc( sizeof( entry_t ) ) ) == NULL ) {
+        return NULL;
+    }
 
-	if( ( newpair->key = strdup( key ) ) == NULL ) {
-		return NULL;
-	}
+    if( ( thisItem->key = memcpy( malloc( keyLength ), key, keyLength ) ) == NULL ) {
+        return NULL;
+    }
 
-	if( ( newpair->value = strdup( value ) ) == NULL ) {
-		return NULL;
-	}
+    if( ( thisItem->value = memcpy( malloc( size ), value, size ) ) == NULL ) {
+        return NULL;
+    }
 
-	newpair->next = NULL;
+    thisItem->keyLength = keyLength;
+    thisItem->next = NULL;
 
-	return newpair;
+    return thisItem;
 }
 
 /* Insert a key-value pair into a hash table. */
-void ht_set( hashtable_t *hashtable, char *key, char *value ) {
-	int bin = 0;
-	entry_t *newpair = NULL;
-	entry_t *next = NULL;
-	entry_t *last = NULL;
+int ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
+    int list = 0;
+    size_t keyLength = strlen( key );
+    entry_t *thisItem = NULL;
+    entry_t *currentItem = NULL;
+    entry_t *previousItem = NULL;
+    entry_t *primaryItem = NULL;
 
-	bin = ht_hash( hashtable, key );
+    if ( size == 0 ) size = strlen( value );
 
-	next = hashtable->table[ bin ];
+    list = ht_hash( hashtable, key, keyLength );
 
-	while( next != NULL && next->key != NULL && strcmp( key, next->key ) > 0 ) {
-		last = next;
-		next = next->next;
-	}
+    primaryItem = currentItem = hashtable->entry[ list ];
 
-	/* There's already a pair.  Let's replace that string. */
-	if( next != NULL && next->key != NULL && strcmp( key, next->key ) == 0 ) {
+    while( currentItem != NULL
+            && currentItem->key != NULL
+            && ( keyLength > currentItem->keyLength
+                || ( keyLength == currentItem->keyLength
+                    && memcmp( key, currentItem->key, keyLength ) > 0 ) ) ) {
+        previousItem = currentItem;
+        currentItem = currentItem->next;
+        /* printf("get position\n"); */
+    }
 
-		free( next->value );
-		next->value = strdup( value );
+    /* There's already a such a key.  Let's replace that string. */
+    if( currentItem != NULL
+            && currentItem->key != NULL
+            && keyLength == currentItem->keyLength
+            && memcmp( key, currentItem->key, keyLength ) == 0 ) {
+        free( currentItem->value );
+        currentItem->value = memcpy( malloc( size ), value, size );
+        /* printf( "overwrite %d\n", list ); */
 
-	/* Nope, could't find it.  Time to grow a pair. */
-	} else {
-		newpair = ht_newpair( key, value );
-
-		/* We're at the start of the linked list in this bin. */
-		if( next == hashtable->table[ bin ] ) {
-			newpair->next = next;
-			hashtable->table[ bin ] = newpair;
-	
-		/* We're at the end of the linked list in this bin. */
-		} else if ( next == NULL ) {
-			last->next = newpair;
-	
-		/* We're in the middle of the list. */
-		} else  {
-			newpair->next = next;
-			last->next = newpair;
-		}
-	}
+    /* Nope, could't find it.  Time to grow a pair. */
+    } else {
+        thisItem = ht_newItem( key, keyLength, value, size );
+        thisItem->next = primaryItem;
+        hashtable->entry[ list ] = thisItem;
+        /* printf( "add item %s / %d\n", thisItem->key, list ); */
+    }
+    return 0;
 }
 
 /* Retrieve a key-value pair from a hash table. */
-char *ht_get( hashtable_t *hashtable, char *key ) {
-	int bin = 0;
-	entry_t *pair;
+void *ht_get( hashtable_t *hashtable, char *key ) {
+    int list = 0;
+    size_t keyLength = strlen( key );
+    entry_t *entryItem;
 
-	bin = ht_hash( hashtable, key );
+    list = ht_hash( hashtable, key, keyLength );
+    /* printf( "search %s / %d\n", key, list ); */
 
-	/* Step through the bin, looking for our value. */
-	pair = hashtable->table[ bin ];
-	while( pair != NULL && pair->key != NULL && strcmp( key, pair->key ) > 0 ) {
-		pair = pair->next;
-	}
+    /* Step through the list, looking for our value. */
+    entryItem = hashtable->entry[ list ];
+    /* printf( "start in bucket %s\n", entryItem->key ); */
+    /* if ( entryItem != NULL ) printf( "entryItem is not NULL\n" ); */
+    /* if ( entryItem->key != NULL ) printf( "eintryItem->key is not NULL\n" ); */
+    /* if ( keyLength > entryItem->keyLength ) printf( "keyLength (%lu) > entryItem->keyLength (%lu)\n", keyLength, entryItem->keyLength ); */
+    /* if ( keyLength == entryItem->keyLength ) printf( "keyLengths are equal\n" ); */
+    /* if ( memcmp( key, entryItem->key, keyLength ) != 0 ) printf( "key > entryItem->key\n" ); */
+    while( entryItem != NULL
+            && entryItem->key != NULL
+            && ( keyLength > entryItem->keyLength
+                || ( keyLength == entryItem->keyLength
+                    && memcmp( key, entryItem->key, keyLength ) != 0 ) ) ) {
+        /* printf( "not %s, go to next\n", entryItem->key ); */
+        entryItem = entryItem->next;
+    }
 
-	/* Did we actually find anything? */
-	if( pair == NULL || pair->key == NULL || strcmp( key, pair->key ) != 0 ) {
-		return NULL;
-
-	} else {
-		return pair->value;
-	}
-	
+    /* Did we actually find anything? */
+    if( entryItem != NULL
+            && entryItem->key != NULL
+            && keyLength == entryItem->keyLength
+            && memcmp( key, entryItem->key, keyLength ) == 0 ) {
+        return entryItem->value;
+    } else {
+        return NULL;
+    }
 }
 
 
 int main( int argc, char **argv ) {
+    char* res;
+    hashtable_t *hashtable = ht_create( 65536 );
 
-	hashtable_t *hashtable = ht_create( 65536 );
+    ht_put( hashtable, "key1", "inky", 0 );
+    ht_put( hashtable, "key2", "pinky", 0 );
+    ht_put( hashtable, "key3", "blinky", 0 );
+    ht_put( hashtable, "key4", "floyd", 0 );
 
-	ht_set( hashtable, "key1", "inky" );
-	ht_set( hashtable, "key2", "pinky" );
-	ht_set( hashtable, "key3", "blinky" );
-	ht_set( hashtable, "key4", "floyd" );
+    printf( "key1: " );
+    res = ht_get( hashtable, "key1" );
+    if ( res != NULL ) printf( "%s\n", res );
+    printf( "key2: " );
+    res = ht_get( hashtable, "key2" );
+    if ( res != NULL ) printf( "%s\n", res );
+    printf( "key3: " );
+    res = ht_get( hashtable, "key3" );
+    if ( res != NULL ) printf( "%s\n", res );
+    printf( "key4: " );
+    res = ht_get( hashtable, "key4" );
+    if ( res != NULL ) printf( "%s\n", res );
+    printf( "key5: " );
+    res = ht_get( hashtable, "key5" );
+    if ( res != NULL ) printf( "%s\n", res );
 
-	printf( "%s\n", ht_get( hashtable, "key1" ) );
-	printf( "%s\n", ht_get( hashtable, "key2" ) );
-	printf( "%s\n", ht_get( hashtable, "key3" ) );
-	printf( "%s\n", ht_get( hashtable, "key4" ) );
-
-	return 0;
+    return 0;
 }
