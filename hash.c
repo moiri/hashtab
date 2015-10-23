@@ -9,7 +9,6 @@
 
 /* Create a new hashtable. */
 hashtable_t *ht_create( int size ) {
-
     hashtable_t *hashtable = NULL;
     int i;
 
@@ -38,7 +37,9 @@ int ht_hash( hashtable_t *hashtable, char *key, size_t keyLength ) {
     size_t hash, i;
 
     // http://en.wikipedia.org/wiki/Jenkins_hash_function
+    /* printf("key: "); */
     for ( hash = i = 0; i < keyLength; ++i ) {
+        /* printf("%x", key[i]); */
         hash += key[i];
         hash += ( hash << 10 );
         hash ^= ( hash >> 6 );
@@ -46,12 +47,13 @@ int ht_hash( hashtable_t *hashtable, char *key, size_t keyLength ) {
     hash += ( hash << 3 );
     hash ^= ( hash >> 11 );
     hash += ( hash << 15 );
+    /* printf("\n"); */
 
     return hash % hashtable->size;
 }
 
 /* Create a key-value pair. */
-entry_t *ht_newItem( char *key, size_t keyLength, void *value, size_t size ) {
+entry_t *ht_newItem( void *key, size_t keyLength, void *value, size_t size ) {
     entry_t *thisItem;
 
     if( ( thisItem = malloc( sizeof( entry_t ) ) ) == NULL ) {
@@ -73,17 +75,18 @@ entry_t *ht_newItem( char *key, size_t keyLength, void *value, size_t size ) {
 }
 
 /* Insert a key-value pair into a hash table. */
-void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
+void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
+        void *value, size_t valLength ) {
     int list = 0;
-    size_t keyLength = strlen( key );
     entry_t *thisItem = NULL;
     entry_t *currentItem = NULL;
     entry_t *previousItem = NULL;
     entry_t *primaryItem = NULL;
 
-    if ( size == 0 ) size = strlen( value );
+    if ( keyLength == 0 ) keyLength = strlen( key );
+    if ( valLength == 0 ) valLength = strlen( value );
 
-    list = ht_hash( hashtable, key, keyLength );
+    list = ht_hash( hashtable, (char*)key, keyLength );
 
     primaryItem = currentItem = hashtable->entry[ list ];
 
@@ -96,29 +99,30 @@ void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size ) {
         currentItem = currentItem->next;
     }
 
-    /* There's already a such a key.  Let's replace that string. */
+    /* There's already a such a key. Replace the value. */
     if( currentItem != NULL
             && currentItem->key != NULL
             && keyLength == currentItem->keyLength
             && memcmp( key, currentItem->key, keyLength ) == 0 ) {
         free( currentItem->value );
-        currentItem->value = memcpy( malloc( size ), value, size );
+        currentItem->value = memcpy( malloc( valLength ), value, valLength );
 
     /* Nope, could't find it.  Time to grow a pair. */
     } else {
-        thisItem = ht_newItem( key, keyLength, value, size );
+        thisItem = ht_newItem( key, keyLength, value, valLength );
         thisItem->next = primaryItem;
         hashtable->entry[ list ] = thisItem;
     }
 }
 
 /* Retrieve a key-value pair from a hash table. */
-void *ht_get( hashtable_t *hashtable, char *key ) {
+void *ht_get( hashtable_t *hashtable, void *key, size_t keyLength ) {
     int list = 0;
-    size_t keyLength = strlen( key );
     entry_t *entryItem;
 
-    list = ht_hash( hashtable, key, keyLength );
+    if ( keyLength == 0 ) keyLength = strlen( key );
+
+    list = ht_hash( hashtable, (char*)key, keyLength );
 
     /* Step through the list, looking for our value. */
     entryItem = hashtable->entry[ list ];

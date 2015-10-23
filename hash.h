@@ -6,10 +6,11 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include <stdlib.h>
+#include <stdlib.h>     // size_t
+#include <stdbool.h>    // bool
 
 struct entry_s {
-    char *key;
+    void *key;
     size_t keyLength;
     void *value;
     struct entry_s *next;
@@ -25,7 +26,8 @@ struct hashtable_s {
 typedef struct hashtable_s hashtable_t;
 
 hashtable_t *ht_create( int size );
-void ht_put( hashtable_t *hashtable, char *key, void *value, size_t size );
-void *ht_get( hashtable_t *hashtable, char *key );
+void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
+        void *value, size_t valLength );
+void *ht_get( hashtable_t *hashtable, void *key, size_t keyLength );
 
 #endif // HASH_H
