@@ -10,7 +10,7 @@
 #include <stdbool.h>    // bool
 
 struct entry_s {
-    void *key;
+    char *key;
     size_t keyLength;
     void *value;
     struct entry_s *next;
@@ -26,8 +26,8 @@ struct hashtable_s {
 typedef struct hashtable_s hashtable_t;
 
 hashtable_t *ht_create( int size );
-void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
+void ht_put( hashtable_t *hashtable, char *key,
         void *value, size_t valLength );
-void *ht_get( hashtable_t *hashtable, void *key, size_t keyLength );
+void *ht_get( hashtable_t *hashtable, char *key );
 
 #endif // HASH_H

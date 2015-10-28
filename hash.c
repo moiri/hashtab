@@ -53,7 +53,7 @@ int ht_hash( hashtable_t *hashtable, char *key, size_t keyLength ) {
 }
 
 /* Create a key-value pair. */
-entry_t *ht_newItem( void *key, size_t keyLength, void *value, size_t size ) {
+entry_t *ht_newItem( char *key, size_t keyLength, void *value, size_t size ) {
     entry_t *thisItem;
 
     if( ( thisItem = malloc( sizeof( entry_t ) ) ) == NULL ) {
@@ -75,18 +75,18 @@ entry_t *ht_newItem( void *key, size_t keyLength, void *value, size_t size ) {
 }
 
 /* Insert a key-value pair into a hash table. */
-void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
+void ht_put( hashtable_t *hashtable, char *key,
         void *value, size_t valLength ) {
     int list = 0;
     entry_t *thisItem = NULL;
     entry_t *currentItem = NULL;
-    entry_t *previousItem = NULL;
     entry_t *primaryItem = NULL;
 
-    if ( keyLength == 0 ) keyLength = strlen( key );
+    size_t keyLength = strlen( key );
     if ( valLength == 0 ) valLength = strlen( value );
 
-    list = ht_hash( hashtable, (char*)key, keyLength );
+    list = ht_hash( hashtable, key, keyLength );
+    /* printf("put hash: %d\n", list); */
 
     primaryItem = currentItem = hashtable->entry[ list ];
 
@@ -95,7 +95,6 @@ void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
             && ( keyLength != currentItem->keyLength
                 || ( keyLength == currentItem->keyLength
                     && memcmp( key, currentItem->key, keyLength ) != 0 ) ) ) {
-        previousItem = currentItem;
         currentItem = currentItem->next;
     }
 
@@ -116,13 +115,14 @@ void ht_put( hashtable_t *hashtable, void *key, size_t keyLength,
 }
 
 /* Retrieve a key-value pair from a hash table. */
-void *ht_get( hashtable_t *hashtable, void *key, size_t keyLength ) {
+void *ht_get( hashtable_t *hashtable, char *key ) {
     int list = 0;
     entry_t *entryItem;
 
-    if ( keyLength == 0 ) keyLength = strlen( key );
+    size_t keyLength = strlen( key );
 
-    list = ht_hash( hashtable, (char*)key, keyLength );
+    list = ht_hash( hashtable, key, keyLength );
+    /* printf("get hash: %d\n", list); */
 
     /* Step through the list, looking for our value. */
     entryItem = hashtable->entry[ list ];
